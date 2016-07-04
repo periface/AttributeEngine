@@ -1,7 +1,15 @@
 # Peri´s SimpleAttributeEngine
-**--A simple javascript library for a simple purpose--**
+**A simple javascript library for a simple purpose**
 
+**Why!?**
 
+Cuz i dont want to do this
+
+``` html
+
+<a href="@{Html.RenderAction("GetValueFromKey","MyController",{new { key="awesomeKey"  }})}"> @{Html.RenderAction("GetValueFromKey","MyController",{new {key="awesomeKey"}})}</a>
+
+```
 
 
 ###Basic usage
