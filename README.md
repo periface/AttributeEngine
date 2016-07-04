@@ -36,6 +36,16 @@ engine.startListener();
 <h2 data-servicename="MyServiceName" data-property="MyProperties.PropertyKeyName"></h2>
 ```
 This will print whatever value you have in the **MyProperties.PropertyKeyName** key in your database, xml, etc.
+#####Add the value in a diferent attribute
+``` html
+<img data-printproperty="src" data-property="MyProperties.WebSiteLogo" data-servicename="MyServiceName"  />
+```
+This will print the value in the src attribute
+#####Use of replicate attribute
+``` html
+<a data-property="MyProperties.Email" data-replicate="true" data-printproperty="href" data-servicename="MyServiceName"></a>
+```
+Setting the replicate attribute to **true** (disabled by default) we can print the results inside the tag and in the attribute
 
 ## License
 
