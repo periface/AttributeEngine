@@ -59,3 +59,9 @@ var logData = function (data, domElement) {
         console.log(domElement);
     }
 ```
+This will execute the binding function in addition with the callback.
+To disable the binding function we can use the **data-ignoreall** attribute
+``` html
+<a data-servicename="MyServiceName" data-ignoreall="true" data-callback="logData" data-property="MyProperties.SomeImportantValue"></a>
+```
+This will disable the binding and only use the callback function
