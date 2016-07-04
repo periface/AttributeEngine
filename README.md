@@ -54,10 +54,10 @@ First we define a callback function inside the callback attribute
 ```
 Then we define the function, when the value is obtained from the server the function is called
 ``` javascript
-var logData = function (data, domElement) {
-        console.log(data);
+var logData = function (someImportantValue, domElement) {
+        console.log(someImportantValue);
         console.log(domElement);
-    }
+}
 ```
 This will execute the binding function in addition with the callback.
 To disable the binding function we can use the **data-ignoreall** attribute
@@ -65,3 +65,13 @@ To disable the binding function we can use the **data-ignoreall** attribute
 <a data-servicename="MyServiceName" data-ignoreall="true" data-callback="logData" data-property="MyProperties.SomeImportantValue"></a>
 ```
 This will disable the binding and only use the callback function
+
+###Extra
+Sometimes we will need to load some things in the old fashion sync way (NOT!).
+Ex. Some logo, title, etc.
+If you really **really need** to do this you can use the **data-async attribute** and set it to false.
+``` html
+<h1 data-async="false" data-servicename="MyServiceName" data-property="MyProperties.SomeUberImportantTitleThatMustBeDisplayedASAP"></h1>
+```
+
+## That´s It! ##
