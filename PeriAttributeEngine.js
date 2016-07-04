@@ -45,6 +45,12 @@ var Engine = (function (options) {
             var replicate = $(this).data("replicate");
             var callbackFunc = $(this).data("callback");
             var useFuncOnly = $(this).data("ignoreall");
+
+            //Use it with caution pls
+            var async = $(this).data("async");
+            if(async == undefined){
+                async = true;
+            }
             var dataBindObj = {
                 propertyRequest: propertyRequest,
                 propertyServiceName: properyServiceName,
@@ -52,7 +58,8 @@ var Engine = (function (options) {
                 replicate: replicate,
                 element: element,
                 callbackFunc: callbackFunc,
-                useFuncOnly: useFuncOnly
+                useFuncOnly: useFuncOnly,
+                runAsync : async
             }
 
 
@@ -82,6 +89,7 @@ var Engine = (function (options) {
             deferredArray.push($.ajax({
                 url: endPointUrl,
                 data: dataBindObj.propertyRequest,
+                async:dataBindObj.runAsync,
                 success: function (data, textStatus, jqXhr) {
                     if (options.debug) {
                         console.log("Text status -->");
