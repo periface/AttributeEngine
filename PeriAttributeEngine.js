@@ -7,7 +7,8 @@ var Engine = (function (options) {
             useOverlay: true,
             autoStart: false,
             overlayObj: undefined,
-            enableDebug :false
+            enableDebug: false,
+            onAllRequestsFinished: undefined
         }
     }
     var self = this;
@@ -25,8 +26,8 @@ var Engine = (function (options) {
         });
     }
     function findElement(arr, propName, propValue) {
-        for (var i = 0; i < arr.length; i++) 
-            if (arr[i][propName] === propValue) 
+        for (var i = 0; i < arr.length; i++)
+            if (arr[i][propName] === propValue)
                 return arr[i];
         return undefined;
         // will return undefined if not found; you could return a default instead
@@ -103,7 +104,7 @@ var Engine = (function (options) {
         }
     }
     this.callFunction = function (func, data, domElement) {
-         try {
+        try {
             window[func](data, domElement);
         } catch (e) {
             console.warn("Callback function has failed to execute or has some internal errors, pleas check it out --->");
@@ -113,14 +114,27 @@ var Engine = (function (options) {
         }
     };
     this.allDoneFunction = function () {
-        if (options.useOverlay) {
-            if (options.overlayObj) {
-                document.getElementById(options.overlayObj).style.width = "0%";
-            } else {
-                console.warn("No hay una capa de carga definida");
+        if (options.onAllRequestsFinished) {
+            options.onAllRequestsFinished();
+            if (options.useOverlay) {
+                //Continue with the normal overlay behavior
+                self.hideOverlay();
             }
         }
-        console.log("All request done");
+        else {
+            if (options.useOverlay) {
+                self.hideOverlay();
+            }
+            console.log("All request done");
+        }
+
+    }
+    this.hideOverlay = function () {
+        if (options.overlayObj) {
+            document.getElementById(options.overlayObj).style.width = "0%";
+        } else {
+            console.warn("No hay una capa de carga definida");
+        }
     }
     this.bindData = function (dataBindObj, data) {
         //var elementTag = dataBindObj.element[0].nodeName.toLowerCase();
