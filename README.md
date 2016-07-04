@@ -47,6 +47,18 @@ This will print the value in the src attribute
 ```
 Setting the replicate attribute to **true** (disabled by default) we can print the results inside the tag and in the attribute
 
+#####Using callbacks
+First we define a callback function inside the callback attribute
+``` html
+<a data-servicename="MyServiceName" data-callback="logData" data-property="MyProperties.SomeImportantValue"></a>
+```
+Then we define the function, when the value is obtained from the server the function is called
+``` javascript
+var setBackgroundImage = function (data, domElement) {
+        console.log(data);
+        console.log(domElement);
+    }
+```
 ## License
 
 The content of this project itself is licensed under the [Creative Commons Attribution 3.0 license](http://creativecommons.org/licenses/by/3.0/us/deed.en_US), and the underlying source code used to format and display that content is licensed under the [MIT license](http://opensource.org/licenses/mit-license.php).
