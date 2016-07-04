@@ -48,7 +48,7 @@ var Engine = (function (options) {
 
             //Use it with caution pls
             var async = $(this).data("async");
-            if(async == undefined){
+            if (async == undefined) {
                 async = true;
             }
             var dataBindObj = {
@@ -59,7 +59,7 @@ var Engine = (function (options) {
                 element: element,
                 callbackFunc: callbackFunc,
                 useFuncOnly: useFuncOnly,
-                runAsync : async
+                runAsync: async
             }
 
 
@@ -89,7 +89,7 @@ var Engine = (function (options) {
             deferredArray.push($.ajax({
                 url: endPointUrl,
                 data: dataBindObj.propertyRequest,
-                async:dataBindObj.runAsync,
+                async: dataBindObj.runAsync,
                 success: function (data, textStatus, jqXhr) {
                     if (options.debug) {
                         console.log("Text status -->");
@@ -116,6 +116,12 @@ var Engine = (function (options) {
             window[func](data, domElement);
         } catch (e) {
             console.warn("Callback function has failed to execute or has some internal errors, pleas check it out --->");
+            console.log("----------------------------------")
+
+            console.log(e)
+
+            console.log("----------------------------------")
+
             console.info("Dont try to eval the function in the lib source dude... pls -->");
             console.info("Lets continue....");
             return;
