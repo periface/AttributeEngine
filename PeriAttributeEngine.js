@@ -103,7 +103,14 @@ var Engine = (function (options) {
         }
     }
     this.callFunction = function (func, data, domElement) {
-        window[func](data, domElement);
+         try {
+            window[func](data, domElement);
+        } catch (e) {
+            console.warn("Callback function has failed to execute or has some internal errors, pleas check it out --->");
+            console.info("Dont try to eval the function in the lib source dude... pls -->");
+            console.info("Lets continue....");
+            return;
+        }
     };
     this.allDoneFunction = function () {
         if (options.useOverlay) {
