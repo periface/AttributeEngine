@@ -62,7 +62,7 @@ var Engine = (function (options) {
                 console.debug(dataBindObj);
             }
             if (serviceInfo == undefined) {
-                console.error("Servicio no definido");
+                console.error("Service undefined");
             } else {
 
                 self.buildAjaxObj(serviceInfo.propertyServiceEndPoint, dataBindObj, deferred);
@@ -125,7 +125,7 @@ var Engine = (function (options) {
             if (options.useOverlay) {
                 self.hideOverlay();
             }
-            console.log("All request done");
+            console.log("All requests done");
         }
 
     }
@@ -133,24 +133,40 @@ var Engine = (function (options) {
         if (options.overlayObj) {
             document.getElementById(options.overlayObj).style.width = "0%";
         } else {
-            console.warn("No hay una capa de carga definida");
+            console.warn("No overlay defined");
         }
     }
     this.bindData = function (dataBindObj, data) {
         //var elementTag = dataBindObj.element[0].nodeName.toLowerCase();
-
         if (dataBindObj.printInProperty) {
             dataBindObj.element.attr(dataBindObj.printInProperty, data);
             if (dataBindObj.replicate) {
-                dataBindObj.element.text(data);
+                self.appendDataInDomElement(dataBindObj, data);
+            } else {
+                self.appendOnlyId(dataBindObj);
             }
         } else {
-            dataBindObj.element.text(data);
+            self.appendDataInDomElement(dataBindObj, data);
         }
+    }
+    this.appendDataInDomElement = function (dataBindObj, data) {
+        dataBindObj.element.text(data);
+        dataBindObj.element.attr("id", dataBindObj.propertyRequest);
+    };
+    this.appendOnlyId = function (dataBindObj) {
+        dataBindObj.element.attr("id", dataBindObj.propertyRequest);
+    };
+    this.getValueFromDomElement = function (keyValue) {
+        var value = document.getElementById(keyValue).value;
+        if (value) {
+            return value;
+        }
+        return undefined;
     }
     return {
         propertyServices: this.propertyServices,
         defineNewPropertyService: this.definePropertyService,
+        getValue: this.getValueFromDomElement,
         startListener: this.listener
     };
 });
