@@ -40,7 +40,7 @@ var Engine = (function (options) {
         $("[data-property]").each(function () {
             var element = $(this);
             var propertyRequest = $(this).data("property");
-            var properyServiceName = $(this).data("servicename");
+            var propertyServiceName = $(this).data("servicename");
             var printInProperty = $(this).data("printproperty");
             var replicate = $(this).data("replicate");
             var callbackFunc = $(this).data("callback");
@@ -53,7 +53,7 @@ var Engine = (function (options) {
             }
             var dataBindObj = {
                 propertyRequest: propertyRequest,
-                propertyServiceName: properyServiceName,
+                propertyServiceName: propertyServiceName,
                 printInProperty: printInProperty,
                 replicate: replicate,
                 element: element,
@@ -63,7 +63,7 @@ var Engine = (function (options) {
             }
 
 
-            var serviceInfo = findElement(self.propertyServices, "propertyServiceName", properyServiceName);
+            var serviceInfo = findElement(self.propertyServices, "propertyServiceName", propertyServiceName);
             if (options.enableDebug) {
 
                 console.debug(dataBindObj);
