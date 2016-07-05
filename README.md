@@ -32,6 +32,8 @@ var engine = new Engine({
 ```javascript
 engine.defineNewPropertyService("MyServiceName", "/MyController/GetKeyValuePropsByKey");
 ```
+For now the only parameter send to the server is **key**
+
 #####Start the engine
 ```javascript
 engine.startListener();
