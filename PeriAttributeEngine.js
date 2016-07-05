@@ -12,7 +12,7 @@ var Engine = (function (options) {
         }
     }
     var self = this;
-
+    var propertyServiceConst = "propertyServiceName";
     //All property services defined
     this.propertyServices = [];
 
@@ -45,7 +45,7 @@ var Engine = (function (options) {
             var replicate = $(this).data("replicate");
             var callbackFunc = $(this).data("callback");
             var useFuncOnly = $(this).data("ignoreall");
-
+            var extendProperties = $(this).data("params");
             //Use it with caution pls
             var async = $(this).data("async");
             if (async == undefined) {
@@ -59,11 +59,12 @@ var Engine = (function (options) {
                 element: element,
                 callbackFunc: callbackFunc,
                 useFuncOnly: useFuncOnly,
-                runAsync: async
+                runAsync: async,
+                requestProperties: extendProperties
             }
 
 
-            var serviceInfo = findElement(self.propertyServices, "propertyServiceName", propertyServiceName);
+            var serviceInfo = findElement(self.propertyServices, propertyServiceConst, propertyServiceName);
             if (options.enableDebug) {
 
                 console.debug(dataBindObj);
@@ -85,12 +86,12 @@ var Engine = (function (options) {
     }
     this.buildAjaxObj = function (endPoint, dataBindObj, deferredArray) {
         if (endPoint !== "" && dataBindObj.propertyRequest !== "") {
-            var endPointUrl = endPoint + "?key=" + dataBindObj.propertyRequest;
+            var data = self.resolveDataRequest(dataBindObj.propertyRequest, dataBindObj.requestProperties);
             deferredArray.push($.ajax({
-                url: endPointUrl,
-                data: dataBindObj.propertyRequest,
+                url: endPoint,
+                data: data,
                 async: dataBindObj.runAsync,
-                success: function (data, textStatus, jqXhr) {
+                success: function (responseData, textStatus, jqXhr) {
                     if (options.debug) {
                         console.log("Text status -->");
                         console.log(textStatus);
@@ -99,13 +100,13 @@ var Engine = (function (options) {
                     }
                     if (dataBindObj.callbackFunc) {
                         if (dataBindObj.useFuncOnly) {
-                            self.callFunction(dataBindObj.callbackFunc, data, dataBindObj.element);
+                            self.callFunction(dataBindObj.callbackFunc, responseData, dataBindObj.element);
                         } else {
                             self.bindData(dataBindObj, data);
-                            self.callFunction(dataBindObj.callbackFunc, data, dataBindObj.element);
+                            self.callFunction(dataBindObj.callbackFunc, responseData, dataBindObj.element);
                         }
                     } else {
-                        self.bindData(dataBindObj, data);
+                        self.bindData(dataBindObj, responseData);
                     }
                 }
             }));
@@ -115,12 +116,12 @@ var Engine = (function (options) {
         try {
             window[func](data, domElement);
         } catch (e) {
-            console.warn("Callback function has failed to execute or has some internal errors, pleas check it out --->");
-            console.log("----------------------------------")
+            console.warn("Callback function has failed to execute or has some internal errors, please check it out --->");
+            console.log("----------------------------------");
 
-            console.log(e)
+            console.log(e);
 
-            console.log("----------------------------------")
+            console.log("----------------------------------");
 
             console.info("Dont try to eval the function in the lib source dude... pls -->");
             console.info("Lets continue....");
@@ -177,10 +178,57 @@ var Engine = (function (options) {
         }
         return undefined;
     }
+    this.getValue = function (serviceName, property, callback) {
+        var serviceInfo = findElement(self.propertyServices, propertyServiceConst, property);
+        if (serviceInfo == undefined) {
+            console.error("Service undefined");
+        } else {
+            self.getValueFromService(serviceInfo, property, function (data) {
+                callback(data);
+            });
+        }
+        console.error("Not implemented yet");
+    }
+    this.getValueFromService = function (serviceInfo, property, callback) {
+        var data = self.resolveDataRequest(property);
+        $.ajax({
+            url: serviceInfo.propertyServiceEndPoint,
+            data: data,
+            success: function (responseData, textStatus, jqXhr) {
+                if (options.debug) {
+                    console.log("Text status -->");
+                    console.log(textStatus);
+                    console.log("jqXHR -->");
+                    console.log(jqXhr);
+                }
+                callback(responseData);
+            }
+        });
+    };
+    function extendDataObj(target, source) {
+        for (var objProperty in source) {
+            if (!target.hasOwnProperty(objProperty)) {
+                target[objProperty] = source[objProperty];
+            }
+        }
+        return target;
+    }
+    this.resolveDataRequest = function (property, extendProperties) {
+        var data = {
+            key: property
+        };
+        if (extendProperties != undefined) {
+            data = extendDataObj(data, extendProperties);
+            console.log(data);
+        }
+        return data;
+    };
+
     return {
         propertyServices: this.propertyServices,
         defineNewPropertyService: this.definePropertyService,
-        getValue: this.getValueFromDomElement,
-        startListener: this.listener
+        getValueFromDom: this.getValueFromDomElement,
+        startListener: this.listener,
+        getValue: this.getValue
     };
 });
