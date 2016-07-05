@@ -8,7 +8,9 @@ var Engine = (function (options) {
             autoStart: false,
             overlayObj: undefined,
             enableDebug: false,
-            onAllRequestsFinished: undefined
+            onAllRequestsFinished: undefined,
+            //Disabled by default: Its beta
+            resolveByConvention: false
         };
     }
     var self = this;
@@ -16,15 +18,27 @@ var Engine = (function (options) {
     //All property services defined
     this.propertyServices = [];
 
-    //Define a new property service
 
-    //Endpoint : Server Side Key, Value
+
+
+    /**
+        * Add a new element to propertyServices array
+        * @param {string} propertyServiceName 
+        * @param {string} propertyServiceEndPoint
+    */
     this.definePropertyService = function (propertyServiceName, propertyServiceEndPoint) {
         self.propertyServices.push({
             propertyServiceName: propertyServiceName,
             propertyServiceEndPoint: propertyServiceEndPoint
         });
     };
+    /**
+        * Find an element in the provided array by the propertyName and value
+        * @param {array} arr
+        * @param {string} propName
+        * @param {string} propValue
+        * @return {propertyService} propertyService
+    */
     function findElement(arr, propName, propValue) {
         for (var i = 0; i < arr.length; i++)
             if (arr[i][propName] === propValue)
@@ -32,6 +46,12 @@ var Engine = (function (options) {
         return undefined;
         // will return undefined if not found; you could return a default instead
     }
+    /**
+        * Extends the data object for custom request to the server
+        * @param {object} target
+        * @param {object} source
+        * @return {object} resultObject
+    */
     function extendDataObj(target, source) {
         for (var objProperty in source) {
             if (source.hasOwnProperty(objProperty)) {
@@ -40,13 +60,54 @@ var Engine = (function (options) {
         }
         return target;
     }
-    //Listener to data-* properties
+    /**
+        * Removes the service name from the request property (only if the engine has the resolveByConvention option active)
+        * @param {string} requestProperty
+        * @return {string} fixedProperty
+    */
+    function fixPropertyForConvention(requestProperty) {
+        var fixed = requestProperty.substring(requestProperty.indexOf(".") + 1);
+        return fixed;
+    }
+    /**
+        * Reads all the data-* attributes from the document
+    */
     this.listener = function () {
         //$.When example for deferred objects
         //Lets try http://stackoverflow.com/questions/5627284/pass-in-an-array-of-deferreds-to-when
         var deferred = [];
+
+        /**
+            * Resolves the service name by convention
+            * @param {string} propertyRequest
+            * @return {Number} propertyService
+        */
+        function resolveServiceNameByConvention(propertyRequest) {
+            var splitServiceName = propertyRequest.split(".");
+            if (options.enableDebug) {
+                console.info("Resolving service by convention");
+            }
+            for (var i = 0; i < splitServiceName.length; i++) {
+                var service = findElement(self.propertyServices, propertyServiceConst, splitServiceName[i]);
+                if (service != undefined) {
+                    if (i > 0) {
+                        //If the service was resolved in a different position than 0 then we broke the convention rules, this may not cause an error
+                        // but can throw some bugs here and there
+                        console.warn("Warning: The service " + service.propertyServiceName + " was resolved in position " + i);
+                        return undefined;
+                    } else {
+                        return service;
+                    }
+                }
+            }
+            return undefined;
+        }
         $("[data-property]").each(function () {
+
+            //Current dom element
             var element = $(this);
+
+            //Value assignation
             var propertyRequest = $(this).data("property");
             var propertyServiceName = $(this).data("servicename");
             var printInProperty = $(this).data("printproperty");
@@ -56,9 +117,11 @@ var Engine = (function (options) {
             var extendProperties = $(this).data("params");
             //Use it with caution pls
             var async = $(this).data("async");
+
             if (async == undefined) {
                 async = true;
             }
+
             var dataBindObj = {
                 propertyRequest: propertyRequest,
                 propertyServiceName: propertyServiceName,
@@ -72,13 +135,55 @@ var Engine = (function (options) {
             };
 
 
-            var serviceInfo = findElement(self.propertyServices, propertyServiceConst, propertyServiceName);
-            if (options.enableDebug) {
+            var serviceInfo;
+            //in test process
+            if (options.resolveByConvention) {
+                //Resolve by convention
+                serviceInfo = resolveServiceNameByConvention(propertyRequest);
 
-                console.debug(dataBindObj);
+                //--Test
+                if (serviceInfo == undefined) {
+
+                    if (options.enableDebug) {
+                        console.warn("Resolve by convention failed for property " + propertyRequest + " trying to resolve the service by default");
+                    }
+                    //Try to resolve the service by default
+                    serviceInfo = findElement(self.propertyServices, propertyServiceConst, propertyServiceName);
+                } else {
+                    //The convention resolver worked so...
+                    if (options.enableDebug) {
+                        console.warn("Resolve by convention succeded for property " + propertyRequest);
+                    }
+                    //Now we know the service is not null
+                    //Next lets remove the service name from the property to request it 
+                    dataBindObj.propertyRequest = fixPropertyForConvention(dataBindObj.propertyRequest);
+                }
+            } else {
+
+
+                serviceInfo = findElement(self.propertyServices, propertyServiceConst, propertyServiceName);
             }
+
+
             if (serviceInfo == undefined) {
-                console.error("Service undefined");
+
+                console.warn("Service undefined for property " + propertyRequest);
+
+                if (options.enableDebug) {
+                    console.info("Trying to get the service by convention for property " + propertyRequest);
+                }
+
+                serviceInfo = resolveServiceNameByConvention(propertyRequest);
+
+                //if still undefined...
+                if (serviceInfo == undefined) {
+                    console.warn("Second try : Service undefined for property " + propertyRequest);
+                    console.info("Seems like you have the convention resolver inactive and you dont have a data-servicename defined for this property ("+propertyRequest+"), skipping.....");
+                } else {
+                    console.info("The convention resolver fixed the problem, but please check the code or enable the convention resolver in the options object");
+                    dataBindObj.propertyRequest = fixPropertyForConvention(dataBindObj.propertyRequest);
+                    self.buildAjaxObj(serviceInfo.propertyServiceEndPoint, dataBindObj, deferred);
+                }
             } else {
 
                 self.buildAjaxObj(serviceInfo.propertyServiceEndPoint, dataBindObj, deferred);
@@ -100,12 +205,6 @@ var Engine = (function (options) {
                 data: data,
                 async: dataBindObj.runAsync,
                 success: function (responseData, textStatus, jqXhr) {
-                    if (options.debug) {
-                        console.log("Text status -->");
-                        console.log(textStatus);
-                        console.log("jqXHR -->");
-                        console.log(jqXhr);
-                    }
                     if (dataBindObj.callbackFunc) {
                         if (dataBindObj.useFuncOnly) {
                             self.callFunction(dataBindObj.callbackFunc, responseData, dataBindObj.element);
@@ -202,12 +301,6 @@ var Engine = (function (options) {
             url: serviceInfo.propertyServiceEndPoint,
             data: data,
             success: function (responseData, textStatus, jqXhr) {
-                if (options.debug) {
-                    console.info("Text status -->");
-                    console.log(textStatus);
-                    console.info("jqXHR -->");
-                    console.log(jqXhr);
-                }
                 callback(responseData);
             }
         });
