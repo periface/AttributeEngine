@@ -2,6 +2,9 @@
 **A simple javascript library for a simple purpose**
 
 **Why!?**
+Sometimes you just want to print some value on an html page or razor file.
+
+
 
 Cuz i dont want to do this
 
