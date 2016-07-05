@@ -32,6 +32,14 @@ var Engine = (function (options) {
         return undefined;
         // will return undefined if not found; you could return a default instead
     };
+    function extendDataObj(target, source) {
+        for (var objProperty in source) {
+            if (!target.hasOwnProperty(objProperty)) {
+                target[objProperty] = source[objProperty];
+            }
+        }
+        return target;
+    }
     //Listener to data-* properties
     this.listener = function () {
         //$.When example for deferred objects
@@ -178,48 +186,45 @@ var Engine = (function (options) {
         }
         return undefined;
     }
-    this.getValue = function (serviceName, property, callback) {
+    this.getValue = function (serviceName, property,extendObject, callback) {
         var serviceInfo = findElement(self.propertyServices, propertyServiceConst, property);
         if (serviceInfo == undefined) {
             console.error("Service undefined");
         } else {
-            self.getValueFromService(serviceInfo, property, function (data) {
+            self.getValueFromService(serviceInfo, property, extendObject, function (data) {
                 callback(data);
             });
         }
         console.error("Not implemented yet");
     }
-    this.getValueFromService = function (serviceInfo, property, callback) {
-        var data = self.resolveDataRequest(property);
+    this.getValueFromService = function (serviceInfo, property, extendObject, callback) {
+        var data = self.resolveDataRequest(property, extendObject);
         $.ajax({
             url: serviceInfo.propertyServiceEndPoint,
             data: data,
             success: function (responseData, textStatus, jqXhr) {
                 if (options.debug) {
-                    console.log("Text status -->");
+                    console.info("Text status -->");
                     console.log(textStatus);
-                    console.log("jqXHR -->");
+                    console.info("jqXHR -->");
                     console.log(jqXhr);
                 }
                 callback(responseData);
             }
         });
     };
-    function extendDataObj(target, source) {
-        for (var objProperty in source) {
-            if (!target.hasOwnProperty(objProperty)) {
-                target[objProperty] = source[objProperty];
-            }
-        }
-        return target;
-    }
+    
     this.resolveDataRequest = function (property, extendProperties) {
         var data = {
             key: property
         };
         if (extendProperties != undefined) {
             data = extendDataObj(data, extendProperties);
-            console.log(data);
+
+            if (options.enableDebug) {
+                console.info("The request object has been extended --->");
+                console.log(data);
+            }
         }
         return data;
     };
