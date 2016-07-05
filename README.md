@@ -7,7 +7,7 @@ Cuz i dont want to do this
 
 ``` html
 
-<a href="@{Html.RenderAction("GetValueFromKey","MyController",{new { key="awesomeKey"  }})}"> @{Html.RenderAction("GetValueFromKey","MyController",{new {key="awesomeKey"}})}</a>
+<a href="@{Html.RenderAction("GetValueFromKey","MyController",{new { key="someAwesomeUrl"  }})}"> @{Html.RenderAction("GetValueFromKey","MyController",{new {key="awesomeKey"}})}</a>
 
 ```
 
