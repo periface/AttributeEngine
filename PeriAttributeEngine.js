@@ -9,7 +9,7 @@ var Engine = (function (options) {
             overlayObj: undefined,
             enableDebug: false,
             onAllRequestsFinished: undefined
-        }
+        };
     }
     var self = this;
     var propertyServiceConst = "propertyServiceName";
@@ -24,17 +24,17 @@ var Engine = (function (options) {
             propertyServiceName: propertyServiceName,
             propertyServiceEndPoint: propertyServiceEndPoint
         });
-    }
+    };
     function findElement(arr, propName, propValue) {
         for (var i = 0; i < arr.length; i++)
             if (arr[i][propName] === propValue)
                 return arr[i];
         return undefined;
         // will return undefined if not found; you could return a default instead
-    };
+    }
     function extendDataObj(target, source) {
         for (var objProperty in source) {
-            if (!target.hasOwnProperty(objProperty)) {
+            if (source.hasOwnProperty(objProperty)) {
                 target[objProperty] = source[objProperty];
             }
         }
@@ -69,7 +69,7 @@ var Engine = (function (options) {
                 useFuncOnly: useFuncOnly,
                 runAsync: async,
                 requestProperties: extendProperties
-            }
+            };
 
 
             var serviceInfo = findElement(self.propertyServices, propertyServiceConst, propertyServiceName);
@@ -119,7 +119,7 @@ var Engine = (function (options) {
                 }
             }));
         }
-    }
+    };
     this.callFunction = function (func, data, domElement) {
         try {
             window[func](data, domElement);
@@ -151,14 +151,14 @@ var Engine = (function (options) {
             console.log("All requests done");
         }
 
-    }
+    };
     this.hideOverlay = function () {
         if (options.overlayObj) {
             document.getElementById(options.overlayObj).style.width = "0%";
         } else {
             console.warn("No overlay defined");
         }
-    }
+    };
     this.bindData = function (dataBindObj, data) {
         //var elementTag = dataBindObj.element[0].nodeName.toLowerCase();
         if (dataBindObj.printInProperty) {
@@ -171,7 +171,7 @@ var Engine = (function (options) {
         } else {
             self.appendDataInDomElement(dataBindObj, data);
         }
-    }
+    };
     this.appendDataInDomElement = function (dataBindObj, data) {
         dataBindObj.element.text(data);
         dataBindObj.element.attr("id", dataBindObj.propertyRequest);
@@ -185,13 +185,13 @@ var Engine = (function (options) {
             return value;
         }
         return undefined;
-    }
-    this.getValue = function(serviceName, property, extendObject, callback) {
+    };
+    this.getValue = function (serviceName, property, extendObject, callback) {
         var serviceInfo = findElement(self.propertyServices, propertyServiceConst, serviceName);
         if (serviceInfo == undefined) {
             console.error("Service undefined");
         } else {
-            self.getValueFromService(serviceInfo, property, extendObject, function(data) {
+            self.getValueFromService(serviceInfo, property, extendObject, function (data) {
                 callback(data);
             });
         }
@@ -212,20 +212,22 @@ var Engine = (function (options) {
             }
         });
     };
-    
+
     this.resolveDataRequest = function (property, extendProperties) {
         var data = {
             key: property
         };
         if (extendProperties != undefined) {
-            data = extendDataObj(data, extendProperties);
+            var extendedData = extendDataObj(data, extendProperties);
 
             if (options.enableDebug) {
                 console.info("The request object has been extended --->");
-                console.log(data);
+                console.log(extendedData);
             }
+            return extendedData;
+        } else {
+            return data;
         }
-        return data;
     };
 
     return {
