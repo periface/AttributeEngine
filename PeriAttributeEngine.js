@@ -186,17 +186,16 @@ var Engine = (function (options) {
         }
         return undefined;
     }
-    this.getValue = function (serviceName, property,extendObject, callback) {
-        var serviceInfo = findElement(self.propertyServices, propertyServiceConst, property);
+    this.getValue = function(serviceName, property, extendObject, callback) {
+        var serviceInfo = findElement(self.propertyServices, propertyServiceConst, serviceName);
         if (serviceInfo == undefined) {
             console.error("Service undefined");
         } else {
-            self.getValueFromService(serviceInfo, property, extendObject, function (data) {
+            self.getValueFromService(serviceInfo, property, extendObject, function(data) {
                 callback(data);
             });
         }
-        console.error("Not implemented yet");
-    }
+    };
     this.getValueFromService = function (serviceInfo, property, extendObject, callback) {
         var data = self.resolveDataRequest(property, extendObject);
         $.ajax({
