@@ -128,17 +128,18 @@ var Engine = (function (options) {
             if (v.dependsOn === parentIterationName) {
                 if (!v.executed) {
                     //This hasn´t been executed
-                    console.log("Now starting iteration for :" + v.dependsOn);
+
 
                     var parentContext = $('[data-template="' + v.dependsOn + '"]');
 
-                    console.log(parentContext);
+                    var sectionContext = $(parentContext).find('[data-identifier="'+v.sectionId+'"]');
 
-                    self.callFunction(v.beforeSendFunction, {}, parentContext, function(d) {
-                        console.log(d);
-                    });
+                    var iterationContext = $(sectionContext).find('[data-iterate="' + v.iterationName + '"]');
+                    var htmlElement = $(iterationContext[0])[0];
+                    //fkme n t ss
+                    console.log($(htmlElement).find("data-id"));
 
-
+                    var id = $(iterationContext).data("data-id");
                     v.executed = true;
                 }
             }
@@ -274,7 +275,8 @@ var Engine = (function (options) {
                         executed: false,
                         iterationSourceName: $(this).data("source"),
                         beforeSendFunction: $(this).data("beforesend"),
-                        iterationService: findElement(self.iterationServices, iterationServiceConst, $(this).data("source"))
+                        iterationService: findElement(self.iterationServices, iterationServiceConst, $(this).data("source")),
+                        iterationName : $(currentIteration).data("iterate")
                     });
                 } else {
                     //Array name
@@ -443,7 +445,6 @@ var Engine = (function (options) {
         } else {
             self.bindData(bindObj, data);
         }
-        self.executeInQueue(bindObj.iterationObjName);
     }
     this.resolvePropertyValue = function (property, object) {
         console.log("Trying to resolve " + property + " from object -->");
@@ -546,15 +547,18 @@ var Engine = (function (options) {
         } else {
             self.appendDataInDomElement(bindObj, data);
         }
+        
     };
     this.appendDataInDomElement = function (bindObj, data) {
         bindObj.element.text(data);
         bindObj.element.attr("id", bindObj.propertyRequest);
         bindObj.element.attr("data-finished", true);
+        self.executeInQueue(bindObj.iterationObjName);
     };
     this.appendOnlyId = function (bindObj) {
         bindObj.element.attr("id", bindObj.propertyRequest);
         bindObj.element.attr("data-finished", true);
+        self.executeInQueue(bindObj.iterationObjName);
     };
     this.getValueFromDomElement = function (keyValue) {
         var value = document.getElementById(keyValue).value;
