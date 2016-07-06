@@ -107,6 +107,18 @@ var Engine = (function (options) {
         }
         return undefined;
     }
+    var dataBindObj = function (propertyRequest, propertyServiceName, printInProperty, replicate, callbackFunc, useFuncOnly, extendProperties, async,element) {
+        this.propertyRequest = propertyRequest;
+        this.propertyServiceName = propertyServiceName;
+        this.printInProperty = printInProperty;
+        this.replicate = replicate;
+        this.callbackFunc = callbackFunc;
+        this.runAsync = async;
+        this.useFuncOnly = useFuncOnly;
+        this.requestProperties = extendProperties;
+        this.element = element;
+    }
+
     /**
         * Reads all the data-* attributes from the document
     */
@@ -114,7 +126,9 @@ var Engine = (function (options) {
         //$.When example for deferred objects
         //Lets try http://stackoverflow.com/questions/5627284/pass-in-an-array-of-deferreds-to-when
         var deferred = [];
-
+        /**
+        * Starts the default listener
+        */
         function initializeMainListener() {
             $("[data-property]").each(function () {
 
@@ -136,17 +150,15 @@ var Engine = (function (options) {
                     async = true;
                 }
 
-                var dataBindObj = {
-                    propertyRequest: propertyRequest,
-                    propertyServiceName: propertyServiceName,
-                    printInProperty: printInProperty,
-                    replicate: replicate,
-                    element: element,
-                    callbackFunc: callbackFunc,
-                    useFuncOnly: useFuncOnly,
-                    runAsync: async,
-                    requestProperties: extendProperties
-                };
+                var bindObj = new dataBindObj(propertyRequest,
+                    propertyServiceName,
+                    printInProperty,
+                    replicate,
+                    callbackFunc,
+                    useFuncOnly,
+                    extendProperties,
+                    async,
+                    element);
 
 
                 var serviceInfo;
@@ -170,7 +182,7 @@ var Engine = (function (options) {
                         }
                         //Now we know the service is not null
                         //Next lets remove the service name from the property to request it 
-                        dataBindObj.propertyRequest = fixPropertyForConvention(dataBindObj.propertyRequest);
+                        bindObj.propertyRequest = fixPropertyForConvention(bindObj.propertyRequest);
                     }
                 } else {
 
@@ -195,17 +207,19 @@ var Engine = (function (options) {
                         console.info("Seems like you have the convention resolver inactive and you dont have a data-servicename defined for this property (" + propertyRequest + "), skipping.....");
                     } else {
                         console.info("The convention resolver fixed the problem, but please check the code or enable the convention resolver in the options object");
-                        dataBindObj.propertyRequest = fixPropertyForConvention(dataBindObj.propertyRequest);
-                        self.buildAjaxObj(serviceInfo.propertyServiceEndPoint, dataBindObj, deferred);
+                        bindObj.propertyRequest = fixPropertyForConvention(bindObj.propertyRequest);
+                        self.buildAjaxObj(serviceInfo.propertyServiceEndPoint, bindObj, deferred);
                     }
                 } else {
 
-                    self.buildAjaxObj(serviceInfo.propertyServiceEndPoint, dataBindObj, deferred);
+                    self.buildAjaxObj(serviceInfo.propertyServiceEndPoint, bindObj, deferred);
                 }
 
             });
         };
-
+        /**
+            * Starts the iterator listener
+        */
         function initializeIteratorListener() {
             $("[data-iterate]").each(function () {
                 //Array name
@@ -249,11 +263,21 @@ var Engine = (function (options) {
     if (options.autoStart) {
         self.listener();
     }
+    /**
+        * Creates a dynamic object
+    */
     var dynamicObj = function (object) {
         var obj = {};
         obj = Object.assign(object);
         return obj;
     };
+    /**
+        * Builds the ajax request for the iteration service
+        * @param {Object} context
+        * @param {String} endPoint
+        * @param {Array} deferredArray
+        * @param {String} iterateValue
+    */
     this.buildAjaxIObj = function (context, endPoint, deferredArray, iterateValue) {
         if (endPoint !== "") {
             deferredArray.push($.ajax({
@@ -274,7 +298,12 @@ var Engine = (function (options) {
             }));
         }
     };
-
+    /**
+        * Process the data-binding for the provided context
+        * @param {Object} context
+        * @param {Array} arrayOfData
+        * @param {String} iterationObjName
+    */
     this.processTemplate = function (context, arrayOfData, iterationObjName) {
         var contextBackUpContent = context.html();
 
@@ -298,7 +327,7 @@ var Engine = (function (options) {
         var sections = $(context).find("[data-identifier]");
 
         //Foreach section found
-        sections.each(function(index, section) {
+        sections.each(function (index, section) {
             var sectionsContext = this;
             //We get the iteration identifier
             var sectionId = $(section).data("identifier");
@@ -306,48 +335,41 @@ var Engine = (function (options) {
             var propertyRequests = $(section).find("[data-iproperty]");
 
             //For each request we find the element in the array by the identifier and then we resolve the value of the property requested
-            propertyRequests.each(function(propertyIndex, propertyRequest) {
+            propertyRequests.each(function (propertyIndex, propertyRequest) {
                 var propertyName = $(propertyRequest).data("iproperty");
+                var printInProperty = $(propertyRequest).data("printproperty");
+                var replicate = $(propertyRequest).data("replicate");
+                var callbackFunc = $(propertyRequest).data("callback");
+                var useFuncOnly = $(propertyRequest).data("ignoreall");
                 var resolvedValue = self.resolvePropertyValue(propertyName, arrayOfData[sectionId]);
-                $(propertyRequest).text(resolvedValue);
+                var element = $(propertyRequest);
+
+                var bindObj = new dataBindObj(propertyName,"",printInProperty,replicate,callbackFunc,useFuncOnly,undefined,true,element);
+
+                self.bindDataOfIteration(bindObj,resolvedValue);
+
             });
         });
 
-
-        //$(context).children().each(function (i, e) {
-            
-        //    var notPropertyFoundElements = 0;
-        //    //find all tag elements with the attribute iproperty
-
-        //    if ($(e).attr('data-identifier')) {
-        //        //I need to find a best way to do this
-        //        var sections = $(e).find();
-        //        var identifier = $(e).data("identifier");
-        //        var find = $(context).find("[data-iproperty]");
-        //        var value = $(find).data("iproperty");
-
-        //        console.log("Detected property request "+value + " of identifier " + identifier);
-        //        console.log("And the value is --->");
-        //        console.log(arrayOfData[identifier]);
-
-        //        var resolvedValue = self.resolvePropertyValue(value, arrayOfData[identifier]);
-        //        console.log(resolvedValue);
-
-        //        console.log("----");
-        //        find.text(resolvedValue);
-
-        //    } else {
-
-        //        notPropertyFoundElements = notPropertyFoundElements + 1;
-
-        //        if (options.enableDebug) {
-
-        //            console.info("Elements with no attribute found in the current context " + notPropertyFoundElements);
-        //        }
-        //    }
-        //});
-
         context.append("<!--End of IterationContext for" + iterationObjName + "-->");
+    }
+    this.bindDataOfIteration = function (bindObj, data) {
+        if (bindObj.callbackFunc) {
+
+            if (bindObj.useFuncOnly) {
+
+                self.callFunction(bindObj.callbackFunc, data, bindObj.element);
+
+            } else {
+
+                self.bindData(bindObj, data);
+
+                self.callFunction(bindObj.callbackFunc, data, bindObj.element);
+
+            }
+        } else {
+            self.bindData(bindObj, data);
+        }
     }
     this.resolvePropertyValue = function (property, object) {
         console.log("Trying to resolve " + property + " from object -->");
@@ -363,33 +385,33 @@ var Engine = (function (options) {
             }
         }
     }
-    this.buildAjaxObj = function (endPoint, dataBindObj, deferredArray) {
+    this.buildAjaxObj = function (endPoint, bindObj, deferredArray) {
 
-        if (endPoint !== "" && dataBindObj.propertyRequest !== "") {
+        if (endPoint !== "" && bindObj.propertyRequest !== "") {
 
-            var data = self.resolveDataRequest(dataBindObj.propertyRequest, dataBindObj.requestProperties);
+            var data = self.resolveDataRequest(bindObj.propertyRequest, bindObj.requestProperties);
 
             deferredArray.push($.ajax({
                 url: endPoint,
                 data: data,
-                async: dataBindObj.runAsync,
+                async: bindObj.runAsync,
                 success: function (responseData, textStatus, jqXhr) {
 
-                    if (dataBindObj.callbackFunc) {
+                    if (bindObj.callbackFunc) {
 
-                        if (dataBindObj.useFuncOnly) {
+                        if (bindObj.useFuncOnly) {
 
-                            self.callFunction(dataBindObj.callbackFunc, responseData, dataBindObj.element);
+                            self.callFunction(bindObj.callbackFunc, responseData, bindObj.element);
 
                         } else {
 
-                            self.bindData(dataBindObj, data);
+                            self.bindData(bindObj, data);
 
-                            self.callFunction(dataBindObj.callbackFunc, responseData, dataBindObj.element);
+                            self.callFunction(bindObj.callbackFunc, responseData, bindObj.element);
 
                         }
                     } else {
-                        self.bindData(dataBindObj, responseData);
+                        self.bindData(bindObj, responseData);
                     }
                 }
             }));
@@ -436,25 +458,25 @@ var Engine = (function (options) {
             console.warn("No overlay defined");
         }
     };
-    this.bindData = function (dataBindObj, data) {
+    this.bindData = function (bindObj, data) {
         //var elementTag = dataBindObj.element[0].nodeName.toLowerCase();
-        if (dataBindObj.printInProperty) {
-            dataBindObj.element.attr(dataBindObj.printInProperty, data);
-            if (dataBindObj.replicate) {
-                self.appendDataInDomElement(dataBindObj, data);
+        if (bindObj.printInProperty) {
+            bindObj.element.attr(bindObj.printInProperty, data);
+            if (bindObj.replicate) {
+                self.appendDataInDomElement(bindObj, data);
             } else {
-                self.appendOnlyId(dataBindObj);
+                self.appendOnlyId(bindObj);
             }
         } else {
-            self.appendDataInDomElement(dataBindObj, data);
+            self.appendDataInDomElement(bindObj, data);
         }
     };
-    this.appendDataInDomElement = function (dataBindObj, data) {
-        dataBindObj.element.text(data);
-        dataBindObj.element.attr("id", dataBindObj.propertyRequest);
+    this.appendDataInDomElement = function (bindObj, data) {
+        bindObj.element.text(data);
+        bindObj.element.attr("id", bindObj.propertyRequest);
     };
-    this.appendOnlyId = function (dataBindObj) {
-        dataBindObj.element.attr("id", dataBindObj.propertyRequest);
+    this.appendOnlyId = function (bindObj) {
+        bindObj.element.attr("id", bindObj.propertyRequest);
     };
     this.getValueFromDomElement = function (keyValue) {
         var value = document.getElementById(keyValue).value;
