@@ -204,11 +204,10 @@ var Engine = (function (options) {
         }
     }
     this.processContext = function (context, deferredArray, parentHasFinished, isInitial) {
+        //Template
+        var parent = $(context).parentsUntil("[data-iterate]");
 
-
-        var parent = $(context).parent("data-template").parent("data-iterate");
         console.log(parent);
-
         var isChild = false;
         if (parentHasFinished) {
             if (isInitial) {
@@ -357,10 +356,6 @@ var Engine = (function (options) {
         */
         function initializeIteratorListener() {
 
-            //This way it only supports one child iteration ->
-            //Possible solution: Build the databindObject without checking if it has a parent or child,
-            //and create a function for do everyting else
-
             $("[data-iterate]").each(function (i, v) {
 
                 //Lets try parent find childrens instead
@@ -427,6 +422,14 @@ var Engine = (function (options) {
                             });
                         }
 
+                    },
+                    statusCode: {
+                        500: function() {
+                            console.log('500 error on context');
+                            console.log(+context);
+                            console.log('Ierate value' + iterateValue);
+
+                        }
                     },
                     error: function () {
                         console.warn("Endpoint (" + endPoint + ") failed");
@@ -708,7 +711,6 @@ var Engine = (function (options) {
         bindObj.element.text(data);
         bindObj.element.attr("id", bindObj.propertyRequest);
         bindObj.element.attr("data-finished", true);
-
         //self.executeInQueue(bindObj.iterationObjName);
     };
     /**
