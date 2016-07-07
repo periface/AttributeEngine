@@ -22,7 +22,7 @@ var Engine = (function (options) {
     this.iterationServices = [];
     /**
        * Add a new element to iterationServices array
-       * @param {string} iterationServiceName 
+       * @param {string} iterationServiceName
        * @param {string} iterationServiceEndPoint
    */
     this.defineIterationService = function (iterationServiceName, iterationServiceEndPoint) {
@@ -33,7 +33,7 @@ var Engine = (function (options) {
     }
     /**
         * Add a new element to propertyServices array
-        * @param {string} propertyServiceName 
+        * @param {string} propertyServiceName
         * @param {string} propertyServiceEndPoint
     */
     this.definePropertyService = function (propertyServiceName, propertyServiceEndPoint) {
@@ -120,26 +120,32 @@ var Engine = (function (options) {
     }
     /**
      * This will execute all the iterations in queue after all the properties from the parent had been assigned
-     * @param {String} parentIterationName 
-     * @returns {null} 
+     * @param {String} parentIterationName
+     * @returns {null}
      */
     this.executeInQueue = function(parentIterationName) {
         $.each(self.dependentIterations, function (i, v) {
+
             if (v.dependsOn === parentIterationName) {
                 if (!v.executed) {
-                    //This hasn´t been executed
+                    setTimeout(function() {
+                        //This hasn�t been executed
 
 
-                    var parentContext = $('[data-template="' + v.dependsOn + '"]');
+                        var parentContext = $('[data-template="' + v.dependsOn + '"]');
 
-                    var sectionContext = $(parentContext).find('[data-identifier="'+v.sectionId+'"]');
+                        var sectionContext = $(parentContext).find('[data-identifier="' + v.sectionId + '"]');
 
-                    var iterationContext = $(sectionContext).find('[data-iterate="' + v.iterationName + '"]');
-                    var htmlElement = $(iterationContext[0])[0];
-                    //fkme n t ss
-                    console.log($(htmlElement).find("data-id"));
+                        var iterationContext = $(sectionContext).find('[data-iterate="' + v.iterationName + '"]');
+                        var htmlElement = $(iterationContext[0])[0];
+                        console.log($(htmlElement));
+                        //fkme n t ss
+                        var id = $(htmlElement).data("id");
+                        console.log(id);
 
-                    var id = $(iterationContext).data("data-id");
+                       //What!?
+                    },0);
+                    console.log("Calling childs");
                     v.executed = true;
                 }
             }
@@ -147,9 +153,9 @@ var Engine = (function (options) {
     }
     /**
      * Sets the section context to the queue element
-     * @param {} sectionId 
-     * @param {} dependsOn 
-     * @returns {} 
+     * @param {} sectionId
+     * @param {} dependsOn
+     * @returns {}
      */
     this.setSectionIdToQueueElement = function(sectionId, dependsOn) {
 
@@ -224,7 +230,7 @@ var Engine = (function (options) {
                             console.warn("Resolve by convention succeded for property " + propertyRequest);
                         }
                         //Now we know the service is not null
-                        //Next lets remove the service name from the property to request it 
+                        //Next lets remove the service name from the property to request it
                         bindObj.propertyRequest = fixPropertyForConvention(bindObj.propertyRequest);
                     }
                 } else {
@@ -547,7 +553,7 @@ var Engine = (function (options) {
         } else {
             self.appendDataInDomElement(bindObj, data);
         }
-        
+
     };
     this.appendDataInDomElement = function (bindObj, data) {
         bindObj.element.text(data);
