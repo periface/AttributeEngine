@@ -107,6 +107,18 @@ var Engine = (function (options) {
         }
         return undefined;
     }
+    /**
+     * Creates a new instance of a databindObject
+     * @param {string} propertyRequest
+     * @param {string} propertyServiceName
+     * @param {string} printInProperty
+     * @param {bool} replicate
+     * @param {function} callbackFunc
+     * @param {bool} useFuncOnly
+     * @param {object} extendProperties
+     * @param {bool} async
+     * @param {$object} element
+     */
     var dataBindObj = function (propertyRequest, propertyServiceName, printInProperty, replicate, callbackFunc, useFuncOnly, extendProperties, async, element) {
         this.propertyRequest = propertyRequest;
         this.propertyServiceName = propertyServiceName;
@@ -121,7 +133,6 @@ var Engine = (function (options) {
     /**
      * This will execute all the iterations in queue after all the properties from the parent had been assigned
      * @param {String} parentIterationName
-     * @returns {null}
      */
     this.executeInQueue = function(parentIterationName) {
         $.each(self.dependentIterations, function (i, v) {
@@ -131,19 +142,24 @@ var Engine = (function (options) {
                     setTimeout(function() {
                         //This hasn�t been executed
 
-
                         var parentContext = $('[data-template="' + v.dependsOn + '"]');
 
                         var sectionContext = $(parentContext).find('[data-identifier="' + v.sectionId + '"]');
 
                         var iterationContext = $(sectionContext).find('[data-iterate="' + v.iterationName + '"]');
+                        
                         var htmlElement = $(iterationContext[0])[0];
-                        console.log($(htmlElement));
-                        //fkme n t ss
-                        var id = $(htmlElement).data("id");
-                        console.log(id);
 
-                       //What!?
+                        var context = $('[data-template="' + v.iterationName + '"]');
+
+                        console.log(v);
+
+                        self.buildAjaxIObj(context, v.iterationService.iterationServiceEndPoint, v.deferredReference, v.iterationName, v.beforeSendFunction);
+                        
+                        //fkme n t ss
+                        //Test -> this attribute might be diferent
+                        var id = $(htmlElement).data("id");
+
                     },0);
                     console.log("Calling childs");
                     v.executed = true;
@@ -270,6 +286,11 @@ var Engine = (function (options) {
             * Starts the iterator listener
         */
         function initializeIteratorListener() {
+
+            //This way it only supports one child iteration ->
+            //Possible solution: Build the databindObject without checking if it has a parent or child,
+            //and create a function for do everyting else
+
             $("[data-iterate]").each(function () {
                 var currentIteration = this;
                 var isInsideParent = $(currentIteration).parents("[data-iterate]").length === 1;
@@ -282,7 +303,8 @@ var Engine = (function (options) {
                         iterationSourceName: $(this).data("source"),
                         beforeSendFunction: $(this).data("beforesend"),
                         iterationService: findElement(self.iterationServices, iterationServiceConst, $(this).data("source")),
-                        iterationName : $(currentIteration).data("iterate")
+                        iterationName : $(currentIteration).data("iterate"),
+                        deferredReference: deferred
                     });
                 } else {
                     //Array name
@@ -314,6 +336,10 @@ var Engine = (function (options) {
 
         initializeMainListener();
         initializeIteratorListener();
+
+        /**
+         * Awaits for all the ajax executions to finish
+         */
         $.when.apply($, deferred).done(self.allDoneFunction);
         //
         //It works!! many awesome!! much power, very async
@@ -323,7 +349,9 @@ var Engine = (function (options) {
     };
 
 
-
+    /**
+     * Auto starts the listener if the autoStart option is set to true
+     */
     if (options.autoStart) {
         self.listener();
     }
@@ -337,10 +365,11 @@ var Engine = (function (options) {
     };
     /**
         * Builds the ajax request for the iteration service
-        * @param {Object} context
-        * @param {String} endPoint
-        * @param {Array} deferredArray
-        * @param {String} iterateValue
+        * @param {$object} context
+        * @param {string} endPoint
+        * @param {array} deferredArray
+        * @param {string} iterateValue
+        * @param {function} beforeSendFunction
     */
     this.buildAjaxIObj = function (context, endPoint, deferredArray, iterateValue, beforeSendFunction) {
         var data = {};
@@ -376,9 +405,9 @@ var Engine = (function (options) {
     };
     /**
         * Process the data-binding for the provided context
-        * @param {Object} context
-        * @param {Array} arrayOfData
-        * @param {String} iterationObjName
+        * @param {$object} context
+        * @param {array} arrayOfData
+        * @param {string} iterationObjName
     */
     this.processTemplate = function (context, arrayOfData, iterationObjName) {
         var contextBackUpContent = context.html();
@@ -424,7 +453,7 @@ var Engine = (function (options) {
                 var useFuncOnly = $(propertyRequest).data("ignoreall");
                 var resolvedValue = self.resolvePropertyValue(propertyName, arrayOfData[sectionId]);
                 var element = $(propertyRequest);
-
+                //now we build a new databindObject
                 var bindObj = new dataBindObj(propertyName, "", printInProperty, replicate, callbackFunc, useFuncOnly, undefined, true, element);
                 bindObj.iterationObjName = iterationObjName;
                 self.bindDataOfIteration(bindObj, resolvedValue);
@@ -434,6 +463,11 @@ var Engine = (function (options) {
 
         context.append("<!--End of IterationContext for" + iterationObjName + "-->");
     }
+    /**
+     * Custom function to bind the data of a iteration
+     * @param {$object} bindObj
+     * @param {object} data
+     */
     this.bindDataOfIteration = function (bindObj, data) {
         if (bindObj.callbackFunc) {
 
@@ -452,6 +486,11 @@ var Engine = (function (options) {
             self.bindData(bindObj, data);
         }
     }
+    /**
+     * Returns a property value from the provided object
+     * @param {string} property
+     * @param {object} object
+     */
     this.resolvePropertyValue = function (property, object) {
         console.log("Trying to resolve " + property + " from object -->");
         for (var key in object) {
@@ -466,6 +505,12 @@ var Engine = (function (options) {
             }
         }
     }
+    /**
+     * Builds the default ajax object
+     * @param {string} endPoint
+     * @param {object} bindObj
+     * @param {array} deferredArray
+     */
     this.buildAjaxObj = function (endPoint, bindObj, deferredArray) {
 
         if (endPoint !== "" && bindObj.propertyRequest !== "") {
@@ -498,6 +543,13 @@ var Engine = (function (options) {
             }));
         }
     };
+    /**
+     * Calls a function based on an string
+     * @param {string} func
+     * @param {object} data
+     * @param {$object} domElement
+     * @param {function} callback
+     */
     this.callFunction = function (func, data, domElement, callback) {
         try {
             //Most simplistic way
@@ -518,6 +570,9 @@ var Engine = (function (options) {
             return;
         }
     };
+    /**
+     * Triggers when all ajax executions are done
+     */
     this.allDoneFunction = function () {
         if (options.onAllRequestsFinished) {
             options.onAllRequestsFinished();
@@ -534,6 +589,9 @@ var Engine = (function (options) {
         }
 
     };
+    /**
+     * Hides the defined overlay
+     */
     this.hideOverlay = function () {
         if (options.overlayObj) {
             document.getElementById(options.overlayObj).style.width = "0%";
@@ -541,6 +599,11 @@ var Engine = (function (options) {
             console.warn("No overlay defined");
         }
     };
+    /**
+     * Binds the received data to the dom element inside the bindObj
+     * @param {object} bindObj
+     * @param {object} data
+     */
     this.bindData = function (bindObj, data) {
         //var elementTag = dataBindObj.element[0].nodeName.toLowerCase();
         if (bindObj.printInProperty) {
@@ -555,12 +618,21 @@ var Engine = (function (options) {
         }
 
     };
+    /**
+     * Appends all the data in the dom
+     * @param {object} bindObj
+     * @param {object} data
+     */
     this.appendDataInDomElement = function (bindObj, data) {
         bindObj.element.text(data);
         bindObj.element.attr("id", bindObj.propertyRequest);
         bindObj.element.attr("data-finished", true);
         self.executeInQueue(bindObj.iterationObjName);
     };
+    /**
+     * Appends only the id in the dom
+     * @param {object} bindObj
+     */
     this.appendOnlyId = function (bindObj) {
         bindObj.element.attr("id", bindObj.propertyRequest);
         bindObj.element.attr("data-finished", true);
