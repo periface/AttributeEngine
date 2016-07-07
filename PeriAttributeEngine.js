@@ -197,18 +197,27 @@ var Engine = (function (options) {
             console.log("The context has " + childs.length + " childs");
             $.each(childs, function (i, child) {
                 console.log(child);
-                self.processContext(child, self.deferred, true);
+                self.processContext(child, self.deferred, true, false);
             });
         } else {
             console.log("No childs");
         }
     }
-    this.processContext = function (context, deferredArray, parentHasFinished) {
-        var isChild = true;
-        if (parentHasFinished == undefined) {
-            parentHasFinished = true;
-            isChild = false;
+    this.processContext = function (context, deferredArray, parentHasFinished, isInitial) {
+
+
+        var parent = $(context).parent("data-template").parent("data-iterate");
+        console.log(parent);
+
+        var isChild = false;
+        if (parentHasFinished) {
+            if (isInitial) {
+                isChild = true;
+            } else {
+                isChild = false;
+            }
         }
+
         setTimeout(function () {
             if (!context) {
                 return;
@@ -354,15 +363,12 @@ var Engine = (function (options) {
 
             $("[data-iterate]").each(function (i, v) {
 
-
-
-                ///Lets try parent find childrens instead
-
-
+                //Lets try parent find childrens instead
+                //
                 // it doesnt have childs cuz they havent been rendered yet
                 //sooo we need to start a sub-listener after the father has finished the instructions
 
-                self.processContext(v, self.deferred);
+                self.processContext(v, self.deferred, false, true);
             });
         }
 
@@ -408,8 +414,6 @@ var Engine = (function (options) {
     this.buildAjaxIObj = function (context, endPoint, deferredArray, iterateValue, beforeSendFunction, isChild, parentHasFinished) {
         var data = {};
         if (!isChild) {
-            console.log("Is not child");
-            console.log(beforeSendFunction);
             if (endPoint !== "") {
                 deferredArray.push($.ajax({
                     url: endPoint,
@@ -436,14 +440,12 @@ var Engine = (function (options) {
                         engineArray.push(new dynamicObj(obj));
                     });
                     self.processTemplate(context, engineArray, iterateValue);
-                    console.log("I had finished my job");
 
-                    self.lookForChilds(context,true);
+                    self.lookForChilds(context, true);
 
                 }));
             }
         } else {
-            console.log("Is child");
             if (parentHasFinished) {
                 console.log("And its parent has finished");
                 if (endPoint !== "") {
@@ -472,7 +474,7 @@ var Engine = (function (options) {
                         });
                         self.processTemplate(context, engineArray, iterateValue);
                         console.log("I had finished my job");
-                        self.lookForChilds(context,true);
+                        self.lookForChilds(context, true);
                     }));
                 }
             }
