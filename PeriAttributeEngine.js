@@ -20,6 +20,12 @@ var Engine = (function (options) {
     this.propertyServices = [];
     this.dependentIterations = [];
     this.iterationServices = [];
+    this.jobsFinished = [];
+
+    this.addJobsFinished = function (jobName) {
+        self.jobsFinished.push(jobName);
+    }
+
     /**
        * Add a new element to iterationServices array
        * @param {string} iterationServiceName
@@ -119,7 +125,7 @@ var Engine = (function (options) {
      * @param {bool} async
      * @param {$object} element
      */
-    var dataBindObj = function (propertyRequest, propertyServiceName, printInProperty, replicate, callbackFunc, useFuncOnly, extendProperties, async, element) {
+    var dataBindObj = function (propertyRequest, propertyServiceName, printInProperty, replicate, callbackFunc, useFuncOnly, extendProperties, async, element, iterationObjName) {
         this.propertyRequest = propertyRequest;
         this.propertyServiceName = propertyServiceName;
         this.printInProperty = printInProperty;
@@ -129,39 +135,39 @@ var Engine = (function (options) {
         this.useFuncOnly = useFuncOnly;
         this.requestProperties = extendProperties;
         this.element = element;
+        this.iterationObjName = iterationObjName;
     }
     /**
      * This will execute all the iterations in queue after all the properties from the parent had been assigned
      * @param {String} parentIterationName
      */
-    this.executeInQueue = function(parentIterationName) {
+    this.executeInQueue = function (parentIterationName) {
         $.each(self.dependentIterations, function (i, v) {
 
             if (v.dependsOn === parentIterationName) {
                 if (!v.executed) {
-                    setTimeout(function() {
+                    setTimeout(function () {
                         //This hasn�t been executed
+
+                        console.log("dependen of section id " + v.sectionId);
 
                         var parentContext = $('[data-template="' + v.dependsOn + '"]');
 
                         var sectionContext = $(parentContext).find('[data-identifier="' + v.sectionId + '"]');
 
                         var iterationContext = $(sectionContext).find('[data-iterate="' + v.iterationName + '"]');
-                        
+
                         var htmlElement = $(iterationContext[0])[0];
 
                         var context = $('[data-template="' + v.iterationName + '"]');
 
-                        console.log(v);
-
                         self.buildAjaxIObj(context, v.iterationService.iterationServiceEndPoint, v.deferredReference, v.iterationName, v.beforeSendFunction);
-                        
+
                         //fkme n t ss
                         //Test -> this attribute might be diferent
                         var id = $(htmlElement).data("id");
 
-                    },0);
-                    console.log("Calling childs");
+                    }, 0);
                     v.executed = true;
                 }
             }
@@ -173,9 +179,9 @@ var Engine = (function (options) {
      * @param {} dependsOn
      * @returns {}
      */
-    this.setSectionIdToQueueElement = function(sectionId, dependsOn) {
+    this.setSectionIdToQueueElement = function (sectionId, dependsOn) {
 
-        $.each(self.dependentIterations, function(i, v) {
+        $.each(self.dependentIterations, function (i, v) {
             if (v.dependsOn === dependsOn) {
                 if (!v.sectionId) {
                     v.sectionId = sectionId;
@@ -184,32 +190,89 @@ var Engine = (function (options) {
         });
     };
 
+    this.lookForChilds = function (context) {
+        console.log("Now looking for childs inside context -->");
+        var childs = $(context[0]).find("[data-iterate]");
+        if (childs.length > 0) {
+            console.log("The context has " + childs.length + " childs");
+            $.each(childs, function (i, child) {
+                console.log(child);
+                self.processContext(child, self.deferred, true);
+            });
+        } else {
+            console.log("No childs");
+        }
+    }
+    this.processContext = function (context, deferredArray, isChild) {
+        setTimeout(function () {
+            if (!context) {
+                return;
+            }
+            console.log("Processing context ->");
+
+            console.log(context);
+
+            var iterateValue = $(context).data("iterate");
+            //Iteration source
+            var iterationSourceName = $(context).data("source");
+
+            var beforeSendFunction = $(context).data("beforesend");
+            //avoids the execution of beforesend
+            if (isChild == undefined) {
+
+                beforeSendFunction = undefined;
+            } else {
+
+                console.log("Is child? " + isChild);
+            }
+
+            var iterationService = findElement(self.iterationServices, iterationServiceConst, iterationSourceName);
+
+            if (iterationService == undefined) {
+                console.error("Iteration service undefined for " + iterationSourceName);
+            } else {
+
+                //Iteration template context obj
+                var iterateContext = $(context).find('[data-template="' + iterateValue + '"]');
+
+                self.buildAjaxIObj(iterateContext, iterationService.iterationServiceEndPoint, deferredArray, iterateValue, beforeSendFunction);
+
+                //Iteration template
+                //var templateContext = $(this).find(context);
+
+            }
+        }, 0);
+
+    }
+    this.deferred = [];
     /**
         * Reads all the data-* attributes from the document
     */
     this.listener = function () {
         //$.When example for deferred objects
         //Lets try http://stackoverflow.com/questions/5627284/pass-in-an-array-of-deferreds-to-when
-        var deferred = [];
+
         /**
         * Starts the default listener
         */
         function initializeMainListener() {
-            $("[data-property]").each(function () {
-
+            $("[data-property]").each(function (i, v) {
                 //Current dom element
-                var element = $(this);
+                var element = $(v);
 
                 //Value assignation
-                var propertyRequest = $(this).data("property");
-                var propertyServiceName = $(this).data("servicename");
-                var printInProperty = $(this).data("printproperty");
-                var replicate = $(this).data("replicate");
-                var callbackFunc = $(this).data("callback");
-                var useFuncOnly = $(this).data("ignoreall");
-                var extendProperties = $(this).data("params");
+                var propertyRequest = $(v).data("property");
+                var propertyServiceName = $(v).data("servicename");
+                var printInProperty = $(v).data("printproperty");
+                var replicate = $(v).data("replicate");
+                var callbackFunc = $(v).data("callback");
+                var useFuncOnly = $(v).data("ignoreall");
+                var extendProperties = $(v).data("params");
+
+
+
                 //Use it with caution pls
-                var async = $(this).data("async");
+                var async = $(v).data("async");
 
                 if (async == undefined) {
                     async = true;
@@ -273,11 +336,11 @@ var Engine = (function (options) {
                     } else {
                         console.info("The convention resolver fixed the problem, but please check the code or enable the convention resolver in the options object");
                         bindObj.propertyRequest = fixPropertyForConvention(bindObj.propertyRequest);
-                        self.buildAjaxObj(serviceInfo.propertyServiceEndPoint, bindObj, deferred);
+                        self.buildAjaxObj(serviceInfo.propertyServiceEndPoint, bindObj, self.deferred);
                     }
                 } else {
 
-                    self.buildAjaxObj(serviceInfo.propertyServiceEndPoint, bindObj, deferred);
+                    self.buildAjaxObj(serviceInfo.propertyServiceEndPoint, bindObj, self.deferred);
                 }
 
             });
@@ -291,43 +354,54 @@ var Engine = (function (options) {
             //Possible solution: Build the databindObject without checking if it has a parent or child,
             //and create a function for do everyting else
 
-            $("[data-iterate]").each(function () {
-                var currentIteration = this;
-                var isInsideParent = $(currentIteration).parents("[data-iterate]").length === 1;
-                if (isInsideParent) {
-                    //Iteration service is added to queue
-                    var parent = $(currentIteration).parents("[data-iterate]")[0];
-                    self.dependentIterations.push({
-                        dependsOn: $(parent).data("iterate"),
-                        executed: false,
-                        iterationSourceName: $(this).data("source"),
-                        beforeSendFunction: $(this).data("beforesend"),
-                        iterationService: findElement(self.iterationServices, iterationServiceConst, $(this).data("source")),
-                        iterationName : $(currentIteration).data("iterate"),
-                        deferredReference: deferred
-                    });
-                } else {
-                    //Array name
-                    var iterateValue = $(this).data("iterate");
-                    //Iteration source
-                    var iterationSourceName = $(this).data("source");
-                    var beforeSendFunction = $(this).data("beforesend");
-                    var iterationService = findElement(self.iterationServices, iterationServiceConst, iterationSourceName);
+            $("[data-iterate]").each(function (i, v) {
 
-                    if (iterationService == undefined) {
-                        console.error("Iteration service undefined for " + iterationSourceName);
-                    } else {
 
-                        //Iteration template context obj
-                        var context = $('[data-template="' + iterateValue + '"]');
 
-                        self.buildAjaxIObj(context, iterationService.iterationServiceEndPoint, deferred, iterateValue, beforeSendFunction);
+                ///Lets try parent find childrens instead
 
-                        //Iteration template
-                        //var templateContext = $(this).find(context);
 
-                    }
-                }
+                // it doesnt have childs cuz they havent been rendered yet
+                //sooo we need to start a sub-listener after the father has finished the instructions
+
+                self.processContext(v, self.deferred);
+                //if (isInsideParent) {
+                //    console.log("Is inside parent");
+                //    //Iteration service is added to queue
+                //    var parent = $(v).parents("[data-iterate]")[0];
+                //    self.dependentIterations.push({
+                //        dependsOn: $(parent).data("iterate"),
+                //        executed: false,
+                //        iterationSourceName: $(v).data("source"),
+                //        beforeSendFunction: $(v).data("beforesend"),
+                //        iterationService: findElement(self.iterationServices, iterationServiceConst, $(v).data("source")),
+                //        iterationName: $(v).data("iterate"),
+                //        deferredReference: deferred
+                //    });
+                //}
+                //else {
+                //    //Array name
+                //    var iterateValue = $(v).data("iterate");
+                //    //Iteration source
+                //    var iterationSourceName = $(v).data("source");
+                //    var beforeSendFunction = $(v).data("beforesend");
+                //    var iterationService = findElement(self.iterationServices, iterationServiceConst, iterationSourceName);
+
+                //    if (iterationService == undefined) {
+                //        console.error("Iteration service undefined for " + iterationSourceName);
+                //    } else {
+
+                //        //Iteration template context obj
+                //        var context = $('[data-template="' + iterateValue + '"]');
+
+                //        self.buildAjaxIObj(context, iterationService.iterationServiceEndPoint, deferred, iterateValue, beforeSendFunction);
+
+                //        //Iteration template
+                //        //var templateContext = $(this).find(context);
+
+                //    }
+                //    self.executeInQueue();
+                //}
 
             });
         }
@@ -340,7 +414,7 @@ var Engine = (function (options) {
         /**
          * Awaits for all the ajax executions to finish
          */
-        $.when.apply($, deferred).done(self.allDoneFunction);
+        $.when.apply($, self.deferred).done(self.allDoneFunction);
         //
         //It works!! many awesome!! much power, very async
 
@@ -387,22 +461,26 @@ var Engine = (function (options) {
                         });
                     }
                 },
-                success: function (responseData, textStatus, jqXhr) {
-
-                    var engineArray = [];
-
-                    $.each(responseData, function (index, obj) {
-                        engineArray.push(new dynamicObj(obj));
-                    });
-                    self.processTemplate(context, engineArray, iterateValue);
-                },
                 error: function () {
                     console.warn("Endpoint (" + endPoint + ") failed");
                     return;
                 }
+            }).done(function (responseData) {
+
+                var engineArray = [];
+
+                $.each(responseData, function (index, obj) {
+                    engineArray.push(new dynamicObj(obj));
+                });
+                self.processTemplate(context, engineArray, iterateValue);
+                console.log("I had finished my job");
+
+                self.lookForChilds(context);
+
             }));
         }
     };
+
     /**
         * Process the data-binding for the provided context
         * @param {$object} context
@@ -454,8 +532,8 @@ var Engine = (function (options) {
                 var resolvedValue = self.resolvePropertyValue(propertyName, arrayOfData[sectionId]);
                 var element = $(propertyRequest);
                 //now we build a new databindObject
-                var bindObj = new dataBindObj(propertyName, "", printInProperty, replicate, callbackFunc, useFuncOnly, undefined, true, element);
-                bindObj.iterationObjName = iterationObjName;
+                var bindObj = new dataBindObj(propertyName, "", printInProperty, replicate, callbackFunc, useFuncOnly, undefined, true, element, iterationObjName);
+
                 self.bindDataOfIteration(bindObj, resolvedValue);
 
             });
@@ -492,7 +570,9 @@ var Engine = (function (options) {
      * @param {object} object
      */
     this.resolvePropertyValue = function (property, object) {
-        console.log("Trying to resolve " + property + " from object -->");
+        if (options.enableDebug) {
+            console.log("Trying to resolve " + property + " from object -->");
+        }
         for (var key in object) {
             if (Object.prototype.hasOwnProperty.call(object, key)) {
                 if (property === key) {
@@ -520,25 +600,24 @@ var Engine = (function (options) {
             deferredArray.push($.ajax({
                 url: endPoint,
                 data: data,
-                async: bindObj.runAsync,
-                success: function (responseData, textStatus, jqXhr) {
+                async: bindObj.runAsync
 
-                    if (bindObj.callbackFunc) {
+            }).done(function (responseData) {
+                if (bindObj.callbackFunc) {
 
-                        if (bindObj.useFuncOnly) {
+                    if (bindObj.useFuncOnly) {
 
-                            self.callFunction(bindObj.callbackFunc, responseData, bindObj.element);
+                        self.callFunction(bindObj.callbackFunc, responseData, bindObj.element);
 
-                        } else {
-
-                            self.bindData(bindObj, data);
-
-                            self.callFunction(bindObj.callbackFunc, responseData, bindObj.element);
-
-                        }
                     } else {
-                        self.bindData(bindObj, responseData);
+
+                        self.bindData(bindObj, data);
+
+                        self.callFunction(bindObj.callbackFunc, responseData, bindObj.element);
+
                     }
+                } else {
+                    self.bindData(bindObj, responseData);
                 }
             }));
         }
@@ -624,10 +703,13 @@ var Engine = (function (options) {
      * @param {object} data
      */
     this.appendDataInDomElement = function (bindObj, data) {
+        //console.log("Appending data to ");
+        //console.log(bindObj);
         bindObj.element.text(data);
         bindObj.element.attr("id", bindObj.propertyRequest);
         bindObj.element.attr("data-finished", true);
-        self.executeInQueue(bindObj.iterationObjName);
+
+        //self.executeInQueue(bindObj.iterationObjName);
     };
     /**
      * Appends only the id in the dom
