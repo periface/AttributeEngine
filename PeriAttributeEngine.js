@@ -18,14 +18,17 @@ var Engine = (function (options) {
     var iterationServiceConst = "iterationServiceName";
     //All property services defined
     this.propertyServices = [];
-    this.dependentIterations = [];
     this.iterationServices = [];
-    this.jobsFinished = [];
-
-    this.addJobsFinished = function (jobName) {
-        self.jobsFinished.push(jobName);
+    /**
+     * Creates a new context istance
+     * @param {} dataIterateContext 
+     * @param {} dataTemplateContext 
+     * @returns {} 
+     */
+    var createContext = function (dataIterateContext, parentContext) {
+        this.iterationContext = dataIterateContext;
+        this.parentContext = parentContext;
     }
-
     /**
        * Add a new element to iterationServices array
        * @param {string} iterationServiceName
@@ -137,90 +140,47 @@ var Engine = (function (options) {
         this.element = element;
         this.iterationObjName = iterationObjName;
     }
+    
     /**
-     * This will execute all the iterations in queue after all the properties from the parent had been assigned
-     * @param {String} parentIterationName
-     */
-    this.executeInQueue = function (parentIterationName) {
-        $.each(self.dependentIterations, function (i, v) {
-
-            if (v.dependsOn === parentIterationName) {
-                if (!v.executed) {
-                    setTimeout(function () {
-                        //This hasn�t been executed
-
-                        console.log("dependen of section id " + v.sectionId);
-
-                        var parentContext = $('[data-template="' + v.dependsOn + '"]');
-
-                        var sectionContext = $(parentContext).find('[data-identifier="' + v.sectionId + '"]');
-
-                        var iterationContext = $(sectionContext).find('[data-iterate="' + v.iterationName + '"]');
-
-                        var htmlElement = $(iterationContext[0])[0];
-
-                        var context = $('[data-template="' + v.iterationName + '"]');
-
-                        self.buildAjaxIObj(context, v.iterationService.iterationServiceEndPoint, v.deferredReference, v.iterationName, v.beforeSendFunction);
-
-                        //fkme n t ss
-                        //Test -> this attribute might be diferent
-                        var id = $(htmlElement).data("id");
-
-                    }, 0);
-                    v.executed = true;
-                }
-            }
-        });
-    }
-    /**
-     * Sets the section context to the queue element
-     * @param {} sectionId
-     * @param {} dependsOn
-     * @returns {}
-     */
-    this.setSectionIdToQueueElement = function (sectionId, dependsOn) {
-
-        $.each(self.dependentIterations, function (i, v) {
-            if (v.dependsOn === dependsOn) {
-                if (!v.sectionId) {
-                    v.sectionId = sectionId;
-                }
-            }
-        });
-    };
-
+        * Looks for child iterations inside of the provided context
+        * @param {object} context 
+        * @returns {} 
+    */
     this.lookForChilds = function (context) {
         console.log("Now looking for childs inside context -->");
         var childs = $(context[0]).find("[data-iterate]");
         if (childs.length > 0) {
             console.log("The context has " + childs.length + " childs");
             $.each(childs, function (i, child) {
-                console.log(child);
-                self.processContext(child, self.deferred);
+                //Build the currentContext for the child iteration
+                var iterationContext = $(child);
+                var parentContext = $(child).parent().closest("[data-iterate]");
+                var currentContext = new createContext(iterationContext, parentContext);
+                self.processContext(currentContext, self.deferred);
             });
         } else {
             console.log("No childs");
         }
     }
-    this.processContext = function (context, deferredArray) {
-        //Template
-        var parent = $(context).parentsUntil("[data-iterate]");
-
-
+    /**
+     * Process the current context and builds the iteration data
+     * @param {object} currentContext 
+     * @param {array} deferredArray 
+     */
+    this.processContext = function (currentContext, deferredArray) {
         setTimeout(function () {
-            if (!context) {
+            if (!currentContext) {
                 return;
             }
             console.log("Processing context ->");
 
-            console.log(context);
+            console.log(currentContext);
 
-            var iterateValue = $(context).data("iterate");
+            var iterateValue = currentContext.iterationContext.data("iterate");
             //Iteration source
-            var iterationSourceName = $(context).data("source");
+            var iterationSourceName = currentContext.iterationContext.data("source");
 
-            var beforeSendFunction = $(context).data("beforesend");
+            var beforeSendFunction = currentContext.iterationContext.data("beforesend");
             //avoids the execution of beforesend
 
             var iterationService = findElement(self.iterationServices, iterationServiceConst, iterationSourceName);
@@ -228,14 +188,28 @@ var Engine = (function (options) {
             if (iterationService == undefined) {
                 console.error("Iteration service undefined for " + iterationSourceName);
             } else {
+                //We look for the data-finished property in the father
+                var isParentFinished = currentContext.parentContext.data("finished");
+                //if the father has finished we proceed as normal
+                if (isParentFinished === true) {
+                    console.log("Parent has finished for ");
+                    console.log(currentContext);
+                    //Iteration template context obj
+                    self.buildAjaxIObj(currentContext, iterationService.iterationServiceEndPoint, deferredArray, iterateValue, beforeSendFunction);
 
-                //Iteration template context obj
-                var iterateContext = $(context).find('[data-template="' + iterateValue + '"]');
-
-                self.buildAjaxIObj(iterateContext, iterationService.iterationServiceEndPoint, deferredArray, iterateValue, beforeSendFunction);
-
-                //Iteration template
-                //var templateContext = $(this).find(context);
+                    //Iteration template
+                    //var templateContext = $(this).find(context);
+                } else {
+                    //At this point we now that or the parent hasnt finished or the iteration element has no father at all
+                    if (isParentFinished == undefined) {
+                        
+                        //Here we check if there is no father for the current context
+                        if (currentContext.parentContext.length <= 0) {
+                            //Its only a parent
+                            self.buildAjaxIObj(currentContext, iterationService.iterationServiceEndPoint, deferredArray, iterateValue, beforeSendFunction);
+                        }
+                    }
+                }
 
             }
         }, 0);
@@ -348,13 +322,14 @@ var Engine = (function (options) {
         function initializeIteratorListener() {
 
             $("[data-iterate]").each(function (i, v) {
+                var iterationContext = $(v);
 
+                var parentContext = $(v).parent().closest("[data-iterate]");
+
+                var currentContext = new createContext(iterationContext, parentContext);
                 //Lets try parent find childrens instead
                 //
-                // it doesnt have childs cuz they havent been rendered yet
-                //sooo we need to start a sub-listener after the father has finished the instructions
-
-                self.processContext(v, self.deferred);
+                self.processContext(currentContext, self.deferred);
             });
         }
 
@@ -407,7 +382,7 @@ var Engine = (function (options) {
                     data: data,
                     beforeSend: function (jqXhr, settings) {
                         if (beforeSendFunction != undefined) {
-                            self.callFunction(beforeSendFunction, data, context, function (updatedData) {
+                            self.callFunction(beforeSendFunction, data, context.iterationContext, function (updatedData) {
                                 if (updatedData) {
                                     settings.url = settings.url + "/" + updatedData.Id;
                                 }
@@ -419,7 +394,7 @@ var Engine = (function (options) {
                         500: function () {
                             console.log('500 error on context');
                             console.log(context);
-                            console.log('Ierate value' + iterateValue);
+                            console.log('Iterate value' + iterateValue);
 
                         }
                     },
@@ -434,9 +409,9 @@ var Engine = (function (options) {
                     $.each(responseData, function (index, obj) {
                         engineArray.push(new dynamicObj(obj));
                     });
-                    self.processTemplate(context, engineArray, iterateValue);
+                    self.processTemplate(context.iterationContext, engineArray, iterateValue);
 
-                    self.lookForChilds(context, true);
+                    self.lookForChilds(context.iterationContext, true);
 
                 }));
             }
@@ -546,7 +521,7 @@ var Engine = (function (options) {
                 // use val
             }
         }
-    }
+    };
     /**
      * Builds the default ajax object
      * @param {string} endPoint
