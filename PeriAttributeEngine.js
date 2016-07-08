@@ -19,16 +19,34 @@ var Engine = (function (options) {
     //All property services defined
     this.propertyServices = [];
     this.iterationServices = [];
+
+
+    function s4() {
+        return Math.floor((1 + Math.random()) * 0x10000)
+          .toString(16)
+          .substring(1);
+    }
+    function guid() {
+        return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+          s4() + '-' + s4() + s4() + s4();
+    }
     /**
      * Creates a new context istance
      * @param {} dataIterateContext 
      * @param {} dataTemplateContext 
      * @returns {} 
      */
-    var createContext = function (iterationTemplate, parentContext,mainContext) {
+    var createContext = function (iterationTemplate, parentContext, mainContext, isIterationContextInsideMainContext) {
+        var id = guid();
+        this.templateId = "template-" + id;
         this.mainContext = mainContext;
         this.parentContext = parentContext;
         this.iterationTemplate = iterationTemplate;
+        this.iterationTemplate.attr("data-templateId",this.templateId);
+        this.parentContextId = $(parentContext).data("iterate");
+        this.mainContextId = id;
+        this.iterationTemplateName = $(iterationTemplate).data("template");
+        this.isIterationContextInsideMainContext = isIterationContextInsideMainContext;
     }
     /**
        * Add a new element to iterationServices array
@@ -149,22 +167,35 @@ var Engine = (function (options) {
     */
     this.lookForChilds = function (context) {
         setTimeout(function () {
-            console.log("Now looking for childs inside context -->");
+            //console.log("Now looking for childs inside context -->");
             var childs = $(context[0]).find("[data-iterate]");
             if (childs.length > 0) {
-                console.log("The context has " + childs.length + " childs");
+                //console.log("The context has " + childs.length + " childs");
                 $.each(childs, function (i, child) {
                     //Build the currentContext for the child iteration
                     var mainContext = $(child);
-                    var parentContext = $(child).parentsUntil("[data-parent]").parent().closest("[data-parent]");
-                    var templateContext = $(child).children().closest("[data-template]");;
-                    var currentContext = new createContext(templateContext, parentContext,mainContext);
-                    console.log(currentContext);
-                    self.processContext(currentContext, self.deferred);
 
+                    var parentContext = $(child).parentsUntil("[data-parent]").parent().closest("[data-parent]");
+
+                    var templateContext = $(child).children().closest("[data-template]");;
+
+                    var isIterationContextInsideMainContext = true;
+                    if (templateContext.length <= 0) {
+
+                        //console.warn("No template found inside context -- >");
+                        //console.log(child);
+                        var mainContextTemplateName = mainContext.data("iterate");
+
+                        //console.info("Looking for context " + mainContextTemplateName + " in document");
+
+                        templateContext = $("body").children().closest("[data-template='" + mainContextTemplateName + "']");
+
+                        isIterationContextInsideMainContext = false;
+                    }
+                    var currentContext = new createContext(templateContext, parentContext, mainContext, isIterationContextInsideMainContext);
+                    //console.log(currentContext);
+                    self.processContext(currentContext, self.deferred);
                 });
-            } else {
-                console.log("No childs");
             }
         });
 
@@ -179,9 +210,14 @@ var Engine = (function (options) {
             if (!currentContext) {
                 return;
             }
-            console.log("Processing context ->");
 
-            console.log(currentContext);
+            if (options.enableDebug) {
+
+                console.log("Processing context ->");
+
+                console.log(currentContext);
+
+            }
 
             var iterateValue = currentContext.mainContext.data("iterate");
             //Iteration source
@@ -200,20 +236,16 @@ var Engine = (function (options) {
 
                 //if the father has finished we proceed as normal
                 if (isParentFinished === true) {
-                    console.log("Parent has finished for ");
-                    console.log(currentContext);
                     //Iteration template context obj
                     self.buildAjaxIObj(currentContext, iterationService.iterationServiceEndPoint, deferredArray, iterateValue, beforeSendFunction);
 
                     //Iteration template
                     //var templateContext = $(this).find(context);
                 } else {
-                    console.log(isParentFinished);
                     //At this point we now that or the parent hasnt finished or the iteration element has no father at all
                     if (isParentFinished == undefined) {
 
                         //Here we check if there is no father for the current context
-                        console.log(currentContext.parentContext.length <= 0);
                         if (currentContext.parentContext.length <= 0) {
                             //Its only a parent
                             self.buildAjaxIObj(currentContext, iterationService.iterationServiceEndPoint, deferredArray, iterateValue, beforeSendFunction);
@@ -250,8 +282,8 @@ var Engine = (function (options) {
                 var callbackFunc = $(v).data("callback");
                 var useFuncOnly = $(v).data("ignoreall");
                 var extendProperties = $(v).data("params");
-
-
+                var before = $(v).data("before");
+                var after = $(v).data("after");
 
                 //Use it with caution pls
                 var async = $(v).data("async");
@@ -269,7 +301,8 @@ var Engine = (function (options) {
                     extendProperties,
                     async,
                     element);
-
+                bindObj.before = before;
+                bindObj.after = after;
 
                 var serviceInfo;
                 //in test process
@@ -333,18 +366,17 @@ var Engine = (function (options) {
         function initializeIteratorListener() {
 
             $("[data-iterate]").each(function (i, v) {
-
+                var iterationTemplateInsideContext = true;
                 var mainContext = $(v);
-                console.log("Main context");
-                console.log(mainContext);
-                console.log("Template context");
                 var iterationContext = $(v).children().closest("[data-template]");
-                console.log(iterationContext);
-                console.log("Parent iteration context");
+                if (iterationContext.length <= 0) {
+                    var mainContextTemplateName = mainContext.data("iterate");
+                    iterationContext = $("body").children().closest("[data-template='" + mainContextTemplateName + "']");
+                    iterationTemplateInsideContext = false;
+                }
                 var parentContext = $(v).parentsUntil("[data-parent]").parent().closest("[data-parent]");
-                console.log(parentContext);
-                
-                var currentContext = new createContext(iterationContext,parentContext,mainContext);
+
+                var currentContext = new createContext(iterationContext, parentContext, mainContext, iterationTemplateInsideContext);
                 //Lets try parent find childrens instead
                 //
                 self.processContext(currentContext, self.deferred);
@@ -427,7 +459,7 @@ var Engine = (function (options) {
                     $.each(responseData, function (index, obj) {
                         engineArray.push(new dynamicObj(obj));
                     });
-                    self.processTemplate(context.iterationTemplate, engineArray, iterateValue);
+                    self.processTemplate(context, engineArray, iterateValue);
                     context.mainContext.attr("data-iterationfinished", true);
                     self.lookForChilds(context.mainContext, true);
 
@@ -443,25 +475,29 @@ var Engine = (function (options) {
         * @param {string} iterationObjName
     */
     this.processTemplate = function (context, arrayOfData, iterationObjName) {
-        var contextBackUpContent = context.html();
-        context.html("");
+        var iterationTemplate = context.iterationTemplate;
+        console.log(context);
+        console.log(iterationTemplate);
+        console.log(arrayOfData);
+        console.log(iterationObjName);
+        var contextBackUpContent = iterationTemplate.html();
+        iterationTemplate.html("");
 
-        context.append("<!--IterationContext for " + iterationObjName + "-->");
+        iterationTemplate.append("<!--IterationContext for " + iterationObjName + "-->");
 
 
         //Avoid auto closing tag
 
         //This will define the unique identifier context
-
         $.each(arrayOfData, function (i, v) {
-            var html = "<div data-identifier=" + i + ">";
+            var html = "<div data-itid='" + iterationObjName + "' data-identifier=" + i + ">";
             html += contextBackUpContent;
             html += "</div>";
-            context.append(html);
+            iterationTemplate.append(html);
         });
 
         //Finds all unique contexts
-        var sections = context.find("[data-identifier]");
+        var sections = iterationTemplate.find("[data-identifier]");
 
         //Foreach section found
         sections.each(function (index, section) {
@@ -478,17 +514,20 @@ var Engine = (function (options) {
                 var replicate = $(propertyRequest).data("replicate");
                 var callbackFunc = $(propertyRequest).data("callback");
                 var useFuncOnly = $(propertyRequest).data("ignoreall");
+                var before = $(propertyRequest).data("before");
+                var after = $(propertyRequest).data("after");
                 var resolvedValue = self.resolvePropertyValue(propertyName, arrayOfData[sectionId]);
                 var element = $(propertyRequest);
                 //now we build a new databindObject
                 var bindObj = new dataBindObj(propertyName, "", printInProperty, replicate, callbackFunc, useFuncOnly, undefined, true, element, iterationObjName);
-
+                bindObj.before = before;
+                bindObj.after = after;
                 self.bindDataOfIteration(bindObj, resolvedValue);
 
             });
         });
 
-        context.append("<!--End of IterationContext for" + iterationObjName + "-->");
+        iterationTemplate.append("<!--End of IterationContext for" + iterationObjName + "-->");
     }
     /**
      * Custom function to bind the data of a iteration
@@ -655,7 +694,15 @@ var Engine = (function (options) {
 
         //console.log("Appending data to ");
         //console.log(bindObj);
+
+        if (bindObj.before) {
+            data = bindObj.before + " " + data;
+        }
+        if (bindObj.after) {
+            data = data + " " + bindObj.after;
+        }
         bindObj.element.text(data);
+
         bindObj.element.attr("id", bindObj.propertyRequest);
         bindObj.element.attr("data-property-finished", true);
         //self.executeInQueue(bindObj.iterationObjName);
