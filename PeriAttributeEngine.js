@@ -674,7 +674,11 @@ var Engine = (function (options) {
     this.bindData = function (bindObj, data) {
         //var elementTag = dataBindObj.element[0].nodeName.toLowerCase();
         if (bindObj.printInProperty) {
-            bindObj.element.attr(bindObj.printInProperty, data);
+            var printInProperties = bindObj.printInProperty.split(",");
+            for (var i = 0; i < printInProperties.length; i++) {
+                bindObj.element.attr(printInProperties[i], data);
+            }
+            
             if (bindObj.replicate) {
                 self.appendDataInDomElement(bindObj, data);
             } else {
